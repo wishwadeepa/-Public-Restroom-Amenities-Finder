@@ -1,0 +1,67 @@
+// Prisma Schema for Public Restroom & Amenities Finder
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Amenity {
+  id                String   @id @default(cuid())
+  name              String
+  type              String   // RESTROOM, WATER_FOUNTAIN, SEATING
+  latitude          Float
+  longitude         Float
+  address           String?
+  description       String?
+  
+  // Attribute flags
+  isAccessible      Boolean  @default(false) // Wheelchair accessibility
+  isGenderNeutral   Boolean  @default(false) // Gender-neutral restroom
+  hasBabyChanging   Boolean  @default(false) // Baby changing table
+  feeRequired       Boolean  @default(false) // Free vs paid
+  keyOrCodeRequired Boolean  @default(false) // Key or code needed
+  doorCode          String?  // Optional community shared door/gate code
+  hours             String?  // Operating hours (e.g. "24/7", "08:00 - 20:00")
+  status            String   @default("OPERATIONAL") // OPERATIONAL, OUT_OF_ORDER, CLOSED
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  verifications     AmenityVerification[]
+  reviews           AmenityReview[]
+
+  @@index([latitude, longitude])
+  @@index([type])
+  @@index([status])
+}
+
+model AmenityVerification {
+  id         String   @id @default(cuid())
+  amenityId  String
+  status     String   // OPERATIONAL, OUT_OF_ORDER, CLOSED
+  notes      String?
+  verifiedAt DateTime @default(now())
+
+  amenity    Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@index([amenityId])
+  @@index([verifiedAt])
+}
+
+model AmenityReview {
+  id                String   @id @default(cuid())
+  amenityId         String
+  rating            Int      // 1 to 5
+  cleanlinessRating Int      // 1 to 5
+  comment           String?
+  createdAt         DateTime @default(now())
+
+  amenity           Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@index([amenityId])
+  @@index([createdAt])
+}

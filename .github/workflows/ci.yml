@@ -1,0 +1,59 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-and-test:
+    name: Lint, Test & Build Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Prisma Client Generation
+        run: npx prisma generate
+
+      - name: Static Analysis & Linting
+        run: npm run lint
+
+      - name: Unit & Security Guard Tests
+        run: npm test
+
+      - name: Production Application Build
+        run: npm run build
+        env:
+          DATABASE_URL: "file:./dev.db"
+          NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+
+  container-build:
+    name: Docker Image Build Validation
+    needs: validate-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Container Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: public-restroom-amenities-finder:latest
